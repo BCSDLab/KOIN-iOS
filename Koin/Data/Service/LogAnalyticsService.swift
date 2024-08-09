@@ -20,6 +20,7 @@ final class GA4AnalyticsService: LogAnalyticsService {
             "value": value
         ]
         Analytics.logEvent(label.team, parameters: parameters)
+        
     }
     
 }

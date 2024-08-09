@@ -242,12 +242,13 @@ extension ServiceSelectViewController {
     @objc func logOutButtonTapped() {
         if viewModel.isLogined {
             showLogOutAlert()
+            inputSubject.send(.logEvent(EventParameter.EventLabel.User.hamburger, .click, "로그아웃"))
         } else {
             let loginViewController = LoginViewController(viewModel: LoginViewModel(loginUseCase: DefaultLoginUseCase(userRepository: DefaultUserRepository(service: DefaultUserService())), logAnalyticsEventUseCase: DefaultLogAnalyticsEventUseCase(repository: GA4AnalyticsRepository(service: GA4AnalyticsService()))))
             loginViewController.title = "로그인"
             navigationController?.pushViewController(loginViewController, animated: true)
             
-            inputSubject.send(.logEvent(EventParameter.EventLabel.User.hamburgerLogin, .click, "햄버거 로그인"))
+            inputSubject.send(.logEvent(EventParameter.EventLabel.User.hamburger, .click, "로그인"))
         }
     }
     
@@ -345,12 +346,9 @@ extension ServiceSelectViewController {
             let myPageViewController = MyPageViewController(viewModel: MyPageViewModel(fetchDeptListUseCase: fetchDeptListUseCase, fetchUserDataUseCase: fetchUserDataUseCase, modifyUseCase: modifyUseCase, revokeUseCase: revokeUseCase, checkDuplicatedNicknameUseCase: checkDuplicatedNicknameUseCase, logAnalyticsEventUseCase: logAnalyticsEventUseCase))
             myPageViewController.title = "내 정보"
             navigationController?.pushViewController(myPageViewController, animated: true)
-            
-            inputSubject.send(.logEvent(EventParameter.EventLabel.User.hamburgerMyInfoWithLogin, .click, "내 정보"))
+            self.inputSubject.send(.logEvent(EventParameter.EventLabel.User.hamburger, .click, "정보수정"))
         } else {
             showLoginAlert()
-            
-            inputSubject.send(.logEvent(EventParameter.EventLabel.User.hamburgerMyInfoWithoutLogin, .click, "내 정보"))
         }
         
     }
@@ -367,8 +365,6 @@ extension ServiceSelectViewController {
             
             loginViewController.title = "로그인"
             self?.navigationController?.pushViewController(loginViewController, animated: true)
-            
-            self?.inputSubject.send(.logEvent(EventParameter.EventLabel.User.userOnlyOk, .click, "회원전용 확인"))
         }
         let cancelAction = UIAlertAction(title: "취소", style: .cancel, handler: nil)
         
