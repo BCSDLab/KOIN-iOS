@@ -8,7 +8,7 @@
 import Combine
 import UIKit
 
-final class ShopViewController: UIViewController, CollectionViewDelegate {
+final class ShopViewController: UIViewController {
     
     // MARK: - Properties
     
@@ -16,6 +16,7 @@ final class ShopViewController: UIViewController, CollectionViewDelegate {
     private let inputSubject: PassthroughSubject<ShopViewModel.Input, Never> = .init()
     private var subscriptions: Set<AnyCancellable> = []
     private var scrollDirection: ScrollLog = .scrollToDown
+    private let getUserScreenTimeUseCase = DefaultGetUserScreenTimeUseCase()
     
     // MARK: - UI Components
     
@@ -106,11 +107,12 @@ final class ShopViewController: UIViewController, CollectionViewDelegate {
         bind()
         configureView()
         inputSubject.send(.viewDidLoad)
-        categoryCollectionView.categoryDelegate = self
         searchTextField.addTarget(self, action: #selector(textFieldDidChange(_:)), for: .editingChanged)
         hideKeyboardWhenTappedAround()
         searchTextField.delegate = self
         searchTextField.addTarget(self, action: #selector(textFieldClicked), for: .editingDidBegin)
+        NotificationCenter.default.addObserver(self, selector: #selector(appWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(appDidBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
         self.scrollView.delegate = self
     }
     
@@ -122,6 +124,16 @@ final class ShopViewController: UIViewController, CollectionViewDelegate {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         eventShopCollectionView.startAutoScroll()
+        getUserScreenTimeUseCase.enterVc(enterVcTime: Date())
+        getUserScreenTimeUseCase.beginEvent(beginEventTime: Date(), eventLabel: .shopCategories)
+    }
+    
+    @objc private func appWillResignActive() {
+        getUserScreenTimeUseCase.enterBackground(enterBackgroundTime: Date())
+    }
+    
+    @objc private func appDidBecomeActive() {
+        getUserScreenTimeUseCase.backForeground(backForegroundTime: Date())
     }
     
     // MARK: - Bind
@@ -140,12 +152,24 @@ final class ShopViewController: UIViewController, CollectionViewDelegate {
             }
         }.store(in: &subscriptions)
         
-        shopCollectionView.cellTapPublisher.sink { [weak self] shopId in
-                self?.navigateToShopDataViewController(id: shopId)
-            }.store(in: &subscriptions)
+        shopCollectionView.cellTapPublisher.sink { [weak self] shopId, shopName in
+            let categoryId = self?.categoryCollectionView.selectedCategoryPublisher.value
+            self?.navigateToShopDataViewController(shopId: shopId, categoryId: categoryId)
+            let moveVcTime = self?.getUserScreenTimeUseCase.leaveVc(leaveVcTime: Date())
+            self?.inputSubject.send(.logEvent(EventParameter.EventLabel.Business.shopClick, .click, shopName, shopName, moveVcTime, .shopClick))
+        }.store(in: &subscriptions)
+        
+        categoryCollectionView.cellTapPublisher.sink { [weak self] categoryId in
+            let category = MakeParamsForLog().makeValueForLogAboutStoreId(id: categoryId)
+            let categoryDurationTime = self?.getUserScreenTimeUseCase.endEvent(endEventTime: Date(), eventLabel: .shopCategories)
+            self?.getUserScreenTimeUseCase.beginEvent(beginEventTime: Date(), eventLabel: .shopCategories)
+            self?.inputSubject.send(.logEvent(EventParameter.EventLabel.Business.shopCategories, .click, category, category, categoryDurationTime, .shopCategories))
+            self?.inputSubject.send(.changeCategory(categoryId))
+            self?.searchTextField.text = ""
+        }.store(in: &subscriptions)
         
         eventShopCollectionView.cellTapPublisher.sink { [weak self] shopId in
-            self?.navigateToShopDataViewController(id: shopId)
+            self?.navigateToShopDataViewController(shopId: shopId)
         }.store(in: &subscriptions)
         
         eventShopCollectionView.cellTapTitlePublisher.sink { [weak self] shopName in
@@ -204,7 +228,7 @@ extension ShopViewController: UIScrollViewDelegate {
 
 extension ShopViewController {
     
-    private func navigateToShopDataViewController(id: Int) {
+    private func navigateToShopDataViewController(shopId: Int, categoryId: Int? = nil) {
         let shopService = DefaultShopService()
         let shopRepository = DefaultShopRepository(service: shopService)
         let fetchShopDataUseCase = DefaultFetchShopDataUseCase(shopRepository: shopRepository)
@@ -212,7 +236,7 @@ extension ShopViewController {
         let fetchShopEventListUseCase = DefaultFetchShopEventListUseCase(shopRepository: shopRepository)
         let fetchShopReviewListUsecase = MockFetchShopReviewListUseCase(shopRepository: shopRepository)
         let logAnalyticsEventUseCase = DefaultLogAnalyticsEventUseCase(repository: GA4AnalyticsRepository(service: GA4AnalyticsService()))
-        let shopDataViewModel = ShopDataViewModel(fetchShopDataUseCase: fetchShopDataUseCase, fetchShopMenuListUseCase: fetchShopMenuListUseCase, fetchShopEventListUseCase: fetchShopEventListUseCase, fetchShopReviewListUseCase: fetchShopReviewListUsecase, logAnalyticsEventUseCase: logAnalyticsEventUseCase, shopId: id)
+        let shopDataViewModel = ShopDataViewModel(fetchShopDataUseCase: fetchShopDataUseCase, fetchShopMenuListUseCase: fetchShopMenuListUseCase, fetchShopEventListUseCase: fetchShopEventListUseCase, fetchShopReviewListUseCase: fetchShopReviewListUsecase, logAnalyticsEventUseCase: logAnalyticsEventUseCase, shopId: shopId, categoryId: categoryId)
         let shopDataViewController = ShopDataViewController(viewModel: shopDataViewModel)
         shopDataViewController.title = "주변상점"
         navigationController?.pushViewController(shopDataViewController, animated: true)
@@ -233,12 +257,7 @@ extension ShopViewController {
     private func putImage(data: ShopCategoryDTO) {
         categoryCollectionView.updateCategories(data.shopCategories)
     }
-    
-    func didTapCell(at id: Int) {
-        inputSubject.send(.changeCategory(id))
-        searchTextField.text = ""
-    }
-    
+
     @objc private func textFieldDidChange(_ textField: UITextField) {
         guard let text = textField.text else { return }
         inputSubject.send(.searchTextChanged(text))

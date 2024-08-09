@@ -17,7 +17,7 @@ final class HomeViewController: UIViewController, CollectionViewDelegate {
     private var subscriptions: Set<AnyCancellable> = []
     private let refreshControl = UIRefreshControl()
     private var isSegmentedControlSetupDone = false
-    
+    private let getUserScreenTimeUseCase = DefaultGetUserScreenTimeUseCase()
     // MARK: - UI Components
     
     private let wrapperView: UIView = {
@@ -154,6 +154,7 @@ final class HomeViewController: UIViewController, CollectionViewDelegate {
         configureTapGesture()
         configureSwipeGestures()
         NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(appDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         cornerSegmentControl.addTarget(self, action: #selector(segmentDidChange), for: .valueChanged)
         checkAndShowTooltip()
         print(KeyChainWorker.shared.read(key: .access) ?? "")
@@ -169,9 +170,15 @@ final class HomeViewController: UIViewController, CollectionViewDelegate {
         }
         
         inputSubject.send(.categorySelected(getDiningPlace()))
+        getUserScreenTimeUseCase.backForeground(backForegroundTime: Date())
     }
+    
+    @objc private func appDidEnterBackground() {
+        getUserScreenTimeUseCase.enterBackground(enterBackgroundTime: Date())
+    }
+    
     deinit {
-        NotificationCenter.default.removeObserver(self, name: UIApplication.willEnterForegroundNotification, object: nil)
+        NotificationCenter.default.removeObserver(self)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -183,7 +190,7 @@ final class HomeViewController: UIViewController, CollectionViewDelegate {
         } else {
             inputSubject.send(.getBusInfo("koreatech", "terminal", "shuttle"))
         }
-        
+        getUserScreenTimeUseCase.enterVc(enterVcTime: Date())
         inputSubject.send(.categorySelected(getDiningPlace()))
         navigationController?.setNavigationBarHidden(true, animated: animated)
     }
@@ -407,7 +414,9 @@ extension HomeViewController {
         shopViewController.title = "주변상점"
         navigationController?.pushViewController(shopViewController, animated: true)
         
-        inputSubject.send(.logEvent(EventParameter.EventLabel.Business.mainShopCategories, .click, MakeParamsForLog().makeValueForLogAboutStoreId(id: id)))
+        let category = MakeParamsForLog().makeValueForLogAboutStoreId(id: id)
+        let homeVcTime = getUserScreenTimeUseCase.leaveVc(leaveVcTime: Date())
+        self.inputSubject.send(.logEvent(EventParameter.EventLabel.Business.mainShopCategories, .click, category, "메인", category, homeVcTime, .mainShopCategories))
     }
     
     @objc private func refresh() {
