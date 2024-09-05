@@ -16,7 +16,7 @@ final class NoticeListTableView: UITableView {
     let tapNoticePublisher = PassthroughSubject<Int, Never>()
     let keyWordAddBtnTapPublisher = PassthroughSubject<(), Never>()
     let keyWordTapPublisher = PassthroughSubject<NoticeKeyWordDTO, Never>()
-    private var subscribtions = Set<AnyCancellable>()
+    private var subscriptions = Set<AnyCancellable>()
     private var isForSearch: Bool = false
     
     // MARK: - Initialization
@@ -87,12 +87,14 @@ extension NoticeListTableView: UITableViewDataSource {
             else {
                 return UITableViewCell()
             }
+            
             cell.keyWordAddBtnTapPublisher.sink { [weak self] in
                 self?.keyWordAddBtnTapPublisher.send()
-            }.store(in: &subscribtions)
+            }.store(in: &cell.subscriptions)
             cell.keyWordTapPublisher.sink { [weak self] keyWord in
+                print(keyWord)
                 self?.keyWordTapPublisher.send(keyWord)
-            }.store(in: &subscribtions)
+            }.store(in: &cell.subscriptions)
             return cell
         }
         else if indexPath.section == 1 {
@@ -109,7 +111,9 @@ extension NoticeListTableView: UITableViewDataSource {
     }
    
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tapNoticePublisher.send(noticeArticleList[indexPath.row].id)
+        if indexPath.section == 1 {
+            tapNoticePublisher.send(noticeArticleList[indexPath.row].id)
+        }
     }
 }
 
@@ -123,7 +127,7 @@ extension NoticeListTableView: UITableViewDelegate {
             view.configure(pageInfo: pageInfos)
             view.tapBtnPublisher.sink { [weak self] page in
                 self?.pageBtnPublisher.send(page)
-            }.store(in: &subscribtions)
+            }.store(in: &view.subscriptions)
             return view
         }
         return nil

@@ -13,6 +13,7 @@ final class NoticeKeyWordCollectionView: UICollectionView, UICollectionViewDataS
     private var noticeKeyWordList: [NoticeKeyWordDTO] = []
     let keyWordTapPublisher = PassthroughSubject<NoticeKeyWordDTO, Never>()
     let keyWordAddBtnTapPublisher = PassthroughSubject<(), Never>()
+    var subscriptions = Set<AnyCancellable>()
     
     //MARK: - Initialization
     override init(frame: CGRect, collectionViewLayout layout: UICollectionViewLayout) {
@@ -55,7 +56,6 @@ final class NoticeKeyWordCollectionView: UICollectionView, UICollectionViewDataS
             }
         }
     }
-
 }
 
 extension NoticeKeyWordCollectionView {
