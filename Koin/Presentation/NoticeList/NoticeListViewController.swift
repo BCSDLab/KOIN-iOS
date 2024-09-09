@@ -57,6 +57,7 @@ final class NoticeListViewController: UIViewController, UIGestureRecognizerDeleg
         configureView()
         bind()
         inputSubject.send(.changeBoard(.전체공지))
+        inputSubject.send(.getUserKeyWordList())
         configureSwipeGestures()
         tabBarCollectionView.tag = 0
         self.navigationController?.interactivePopGestureRecognizer?.delegate = self
@@ -65,7 +66,7 @@ final class NoticeListViewController: UIViewController, UIGestureRecognizerDeleg
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        inputSubject.send(.getUserKeyWordList)
+        inputSubject.send(.getUserKeyWordList())
         navigationController?.setNavigationBarHidden(true, animated: false)
     }
     
@@ -91,10 +92,8 @@ final class NoticeListViewController: UIViewController, UIGestureRecognizerDeleg
             switch output {
             case let .updateBoard(noticeList, noticeListPages, noticeListType):
                 self?.updateBoard(noticeList: noticeList, pageInfos: noticeListPages, noticeListType: noticeListType)
-            case let .updateUserKeyWordList(noticeKeyWordList, noticeListType):
-                self?.updateUserKeyWordList(keyWords: noticeKeyWordList, noticeListType: noticeListType)
-            case let .updateSelectedKeyWord(keyWord):
-                self?.updateSelectedKeyWord(keyWord: keyWord)
+            case let .updateUserKeyWordList(noticeKeyWordList, keyWordIdx):
+                self?.updateUserKeyWordList(keyWords: noticeKeyWordList, keyWordIdx: keyWordIdx)
             }
         }.store(in: &subscriptions)
         
@@ -133,7 +132,7 @@ final class NoticeListViewController: UIViewController, UIGestureRecognizerDeleg
         
         noticeTableView.keyWordTapPublisher
             .sink { [weak self] keyWord in
-            self?.inputSubject.send(.changeKeyWord(keyWord))
+                self?.inputSubject.send(.getUserKeyWordList(keyWord))
         }.store(in: &subscriptions)
     }
 }
@@ -172,8 +171,8 @@ extension NoticeListViewController {
         tabBarCollectionView.tag = noticeListType.rawValue - 4
     }
  
-    private func updateUserKeyWordList(keyWords: [NoticeKeyWordDTO], noticeListType: NoticeListType) {
-        noticeTableView.updateKeyWordList(keyWordList: keyWords)
+    private func updateUserKeyWordList(keyWords: [NoticeKeyWordDTO], keyWordIdx: Int) {
+        noticeTableView.updateKeyWordList(keyWordList: keyWords, keyWordIdx: keyWordIdx)
     }
     
     private func configureSwipeGestures() {
@@ -183,10 +182,6 @@ extension NoticeListViewController {
         let swipeRightGesture = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
         swipeRightGesture.direction = .right
         noticeTableView.addGestureRecognizer(swipeRightGesture)
-    }
-    
-    private func updateSelectedKeyWord(keyWord: String) {
-        noticeTableView.updateSelectedKeyWord(keyWord: keyWord)
     }
 }
 

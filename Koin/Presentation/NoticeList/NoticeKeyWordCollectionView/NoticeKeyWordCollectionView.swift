@@ -14,6 +14,7 @@ final class NoticeKeyWordCollectionView: UICollectionView, UICollectionViewDataS
     let keyWordTapPublisher = PassthroughSubject<NoticeKeyWordDTO, Never>()
     let keyWordAddBtnTapPublisher = PassthroughSubject<(), Never>()
     var subscriptions = Set<AnyCancellable>()
+    var selectedKeyWordIdx = 0
     
     //MARK: - Initialization
     override init(frame: CGRect, collectionViewLayout layout: UICollectionViewLayout) {
@@ -34,7 +35,7 @@ final class NoticeKeyWordCollectionView: UICollectionView, UICollectionViewDataS
         contentInset = UIEdgeInsets(top: 0, left: 24, bottom: 0, right: 24)
     }
     
-    func updateUserKeyWordList(keyWordList: [NoticeKeyWordDTO]) {
+    func updateUserKeyWordList(keyWordList: [NoticeKeyWordDTO], keyWordIdx: Int) {
         // 모두보기 키워드는 viewModel에서 넣어서 오기 때문에 배열의 개수가 하나일 때, 알림설정 키워드가 없음.
         noticeKeyWordList.removeAll()
         if keyWordList.count == 0 {
@@ -44,17 +45,8 @@ final class NoticeKeyWordCollectionView: UICollectionView, UICollectionViewDataS
             noticeKeyWordList.append(NoticeKeyWordDTO(id: -1, keyWord: "모두보기"))
         }
         noticeKeyWordList.append(contentsOf: keyWordList)
+        selectedKeyWordIdx = keyWordIdx
         reloadData()
-    }
-    
-    func selectKeyWord(keyWord: String) {
-        for index in 0..<noticeKeyWordList.count {
-            let indexPath = IndexPath(item: index+1, section: 0)
-            if let cell = cellForItem(at: indexPath) as? NoticeKeyWordCollectionViewCell {
-                let isSelected = noticeKeyWordList[index].keyWord == keyWord
-                cell.configure(keyWordModel: noticeKeyWordList[index].keyWord, isSelected: isSelected)
-            }
-        }
     }
 }
 
@@ -72,7 +64,8 @@ extension NoticeKeyWordCollectionView {
             cell.configureFilterImage()
         } else if indexPath.item - 1 < noticeKeyWordList.count {
             let keyWord = noticeKeyWordList[indexPath.item - 1].keyWord
-            cell.configure(keyWordModel: keyWord, isSelected: false)
+            let isSelected = selectedKeyWordIdx + 1 == indexPath.item
+            cell.configure(keyWordModel: keyWord, isSelected: isSelected)
         }
         
         return cell
