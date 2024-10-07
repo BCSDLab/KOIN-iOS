@@ -73,6 +73,15 @@ enum ImageAsset: String {
     case nonReview
     case reportedImageView
     case nonMenuWeekendImage
+    case filter
+    case eye
+    case fireImage
+    case delete
+    case plus
+    case download
+    case noticeLoginToolTip
+    case noticeNotLoginToolTip
+    case popularStar
 }
 
 enum SFSymbols: String {
@@ -85,6 +94,7 @@ enum SFSymbols: String {
     case chevronDown = "chevron.down"
     case chevronUp = "chevron.up"
     case phone
+    case magnifyingGlass = "magnifyingglass"
 }
 
 extension UIImage {
